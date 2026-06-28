@@ -31,7 +31,7 @@ Zynq PS -> 128 KiB shared BRAM -> VenusCore PL NPU
                            UART + JTAG result ABI
 ```
 
-在仓库提交 `c33553c` 的首次板级基线上，原版 Digilent Zybo 上得到：
+在 `v0.1.0` 发布验收中，原版 Digilent Zybo 上得到：
 
 | 项目 | 实测结果 |
 |---|---:|
@@ -46,7 +46,7 @@ Zynq PS -> 128 KiB shared BRAM -> VenusCore PL NPU
 | LUT / FF | 7,328 / 6,738 |
 | BRAM tile / DSP | 42 / 7 |
 
-11.26376 ms 只由 NPU `DEBUG0` 活跃周期计数换算，不包含 PS 搬运、cache 操作、程序启动、UART 或 JTAG 开销，因此不能直接解释为端到端延迟或吞吐率。完整测量条件见 [验证与结果](docs/verification.md)。
+11.26376 ms 只由 NPU `DEBUG0` 活跃周期计数换算，不包含 PS 搬运、cache 操作、程序启动、UART 或 JTAG 开销，因此不能直接解释为端到端延迟或吞吐率。完整测量条件见 [验证与结果](docs/verification.md) 和 [v0.1.0 发布记录](docs/releases/v0.1.0.md)。
 
 ## 系统组成
 

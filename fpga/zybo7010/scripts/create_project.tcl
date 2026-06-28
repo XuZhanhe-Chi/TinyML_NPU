@@ -114,6 +114,26 @@ if {![string match "*Complete*" $impl_status]} {
 open_run impl_1
 report_utilization -file [file join $out_dir utilization.rpt]
 report_timing_summary -file [file join $out_dir timing_summary.rpt]
+set check_timing_file [file join $out_dir check_timing.rpt]
+check_timing -verbose -file $check_timing_file
+
+set timing_handle [open $check_timing_file r]
+set timing_checks [read $timing_handle]
+close $timing_handle
+foreach required_check {no_clock unconstrained_internal_endpoints} {
+  if {![regexp "checking ${required_check} \\(0\\)" $timing_checks]} {
+    error "timing check failed: $required_check is non-zero"
+  }
+}
+
+set unrouted_count [llength [get_nets -quiet -hierarchical -filter {ROUTE_STATUS == UNROUTED}]]
+set partial_count [llength [get_nets -quiet -hierarchical -filter {ROUTE_STATUS == PARTIALLY_ROUTED}]]
+puts "TINYML_NPU_UNROUTED_NETS=$unrouted_count"
+puts "TINYML_NPU_PARTIAL_NETS=$partial_count"
+if {$unrouted_count != 0 || $partial_count != 0} {
+  error "routing is incomplete: unrouted=$unrouted_count partial=$partial_count"
+}
+
 set worst_path [get_timing_paths -setup -max_paths 1]
 set wns [get_property SLACK $worst_path]
 puts "TINYML_NPU_WNS=$wns"
@@ -126,7 +146,9 @@ set bit_file [file join $out_dir tinyml_npu_zybo7010.runs impl_1 system_wrapper.
 if {![file exists $bit_file]} {
   error "bitstream missing: $bit_file"
 }
-puts "TINYML_NPU_BIT=$bit_file"
+set release_bit [file join $out_dir tinyml_npu_zybo7010.bit]
+file copy -force $bit_file $release_bit
+puts "TINYML_NPU_BIT=$release_bit"
 puts "TINYML_NPU_XSA=[file join $out_dir tinyml_npu_zybo7010.xsa]"
 puts "TINYML_NPU_VIVADO_PASS"
 exit
