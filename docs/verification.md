@@ -14,7 +14,7 @@
 | FPGA | synthesis、implementation、timing、bit/XSA | `make zybo-bitstream` |
 | Board | program、ELF download、result ABI | `make zybo-run` |
 
-GitHub Actions 只执行开源工具链部分。Vivado/Vitis 需要专有工具，实体板还需要本地 JTAG，因此两者由发布维护者手工验收。
+当前公开仓库不启用 GitHub-hosted Actions CI。开源工具链检查通过本地 `make check` 复现；Vivado/Vitis 需要专有工具，实体板还需要本地 JTAG，因此两者由发布维护者手工验收并记录到 release manifest。
 
 ## 参考工具环境
 

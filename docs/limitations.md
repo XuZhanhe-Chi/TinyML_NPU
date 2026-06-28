@@ -14,7 +14,7 @@
 - 共享 BRAM 只有 128 KiB，模型必须同时容纳 uOP、参数、activation arena 和 result block。
 - PS 驱动采用 polling 完成路径；IRQ 已连接，但 demo 不实现完整中断服务程序。
 - AXI-Lite/APB bridge 只支持 32-bit full-word register write 契约。
-- 发布二进制由 Vivado/Vitis 2021.1 生成，不能由纯开源 CI 重建。
+- 发布二进制由 Vivado/Vitis 2021.1 生成，不能由纯开源本地检查重建。
 
 ## 非目标
 

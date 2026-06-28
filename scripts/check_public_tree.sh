@@ -7,6 +7,7 @@ cd "$REPO_ROOT"
 echo "[CHECK] Files larger than 10MB"
 large_files=()
 while IFS= read -r -d '' file; do
+  [[ -f "$file" ]] || continue
   if (( $(stat -c '%s' "$file") > 10 * 1024 * 1024 )); then
     large_files+=("$file")
   fi

@@ -15,7 +15,7 @@ No unreleased user-facing changes.
 - Original Digilent Zybo XC7Z010 batch flow for Vivado/Vitis 2021.1.
 - Bare-metal KWS testvector application and versioned JTAG result ABI.
 - Protocol regressions for the AXI-Lite/APB3 and AHB-Lite/BRAM bridges.
-- Reproducible root Makefile, environment checks, CI, release packaging, and project documentation.
+- Reproducible root Makefile, environment checks, local validation, release packaging, and project documentation.
 
 ### Verified
 
