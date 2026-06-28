@@ -1,0 +1,49 @@
+# Python bytecode / caches
+__pycache__/
+*.py[cod]
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtualenvs
+.venv/
+venv/
+ENV/
+env/
+
+# Packaging / builds
+build/
+dist/
+*.egg-info/
+
+# Test / coverage
+.coverage
+htmlcov/
+coverage.xml
+
+# Local outputs (compiler artifacts, debug dumps)
+# Default: ignore everything under out/, but keep small debug/metadata outputs
+# under out/examples/** so they can be checked into git if desired.
+out/**
+!out/examples/
+!out/examples/**/
+!out/examples/**/metadata.json
+!out/examples/**/debug_ir.json
+!out/examples/**/debug_uops.json
+!out/examples/**/bundle.h
+
+# # Local model drops (usually large / not tracked)
+# models/*.onnx
+
+# Driver 示例通常会临时复制一份 bundle.h 到 driver/ 目录用于编译
+driver/bundle.h
+
+# IDE/editor
+.idea/
+.vscode/
+*.swp
+
+# OS junk
+Thumbs.db
+Desktop.ini

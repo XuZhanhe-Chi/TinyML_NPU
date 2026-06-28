@@ -1,0 +1,69 @@
+# Build output
+/build/
+/out/
+/dist/
+*.egg-info/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Scala / sbt
+.bsp/
+.idea/
+.vscode/
+.metals/
+.bloop/
+.scala-build/
+target/
+project/target/
+project/project/
+
+# Vivado / Vitis
+*.jou
+*.log
+*.str
+*.xpr
+*.runs/
+*.cache/
+*.hw/
+*.ip_user_files/
+*.sim/
+*.gen/
+*.sdk/
+*.xsa
+*.bit
+*.ltx
+*.hwh
+.Xil/
+_x/
+Debug/
+Release/
+
+# Simulation and waves
+simv*
+ucli.key
+csrc/
+*.vcd
+*.fst
+*.fsdb
+*.wdb
+
+# Generated hardware and compiler artifacts
+/hw/spinal/rtl/
+/sw/compiler/out/
+/sw/compiler/models/
+/sw/compiler/sim/testvectors/
+uops.bin
+params.bin
+metadata.json
+
+# OS/editor
+.DS_Store
+*~
+*.swp

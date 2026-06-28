@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tinyml-npu-compiler"
+version = "0.1.0"
+description = "Compiler subset for the TinyML_NPU ZYBO7010 demo"
+readme = "README.md"
+license = {text = "Apache-2.0"}
+requires-python = ">=3.10"
+authors = [{name = "TinyML_NPU contributors"}]
+dependencies = [
+  "numpy>=1.23"
+]
+classifiers = [
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent"
+]
+
+[project.optional-dependencies]
+onnx = [
+  "onnx>=1.14"
+]
+dev = [
+  "onnx>=1.14",
+  "pytest>=7.0"
+]
+
+[project.scripts]
+tinyml-npu-compiler = "venuscore_compiler.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["venuscore_compiler*"]
