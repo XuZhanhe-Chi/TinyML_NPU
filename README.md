@@ -1,81 +1,140 @@
 # TinyML_NPU
 
-TinyML_NPU is a small open-source NPU project for FPGA-based TinyML experiments. The first public release targets a closed-loop keyword spotting demo on Digilent ZYBO7010:
+[English](#english) | 中文
 
-`bundle.h/testvector -> Zynq PS writes shared BRAM -> VenusCore PL NPU runs -> PS checks output/top1 -> UART prints TEST PASSED`
+TinyML_NPU 是一个面向研究和教学的 INT8 神经网络加速器参考实现。项目源于毕业设计，目标不是提供可直接商用的 IP，而是公开一条足够小、能够理解、能够修改、也能够在真实 FPGA 上复现的软硬件协同链路。
 
-TinyML_NPU 是一个面向 FPGA TinyML 实验的小型 NPU 开源工程。首版目标是在 Digilent ZYBO7010 上跑通关键词识别测试向量闭环：
+很多 NPU 示例只展示 RTL 算子或软件模型的一端。本项目保留从 ONNX QDQ 编译、32-byte uOP、参数布局、SpinalHDL NPU、Zynq PS 固件到 ZYBO7010 板级验证的完整边界，使读者能够追踪一个量化网络怎样变成硬件可执行的数据，并看到每层地址、DMA 和计算状态如何对应。
 
-`预置 bundle.h/testvector -> Zynq PS 写共享 BRAM -> VenusCore PL NPU 执行 -> PS 比对输出/top1 -> 串口打印 TEST PASSED`
+> 当前公开版本是研究原型，不是生产级推理框架或经过安全认证的硬件 IP。
 
-## Scope
+## 项目意义
 
-Included:
+- **可检查**：编译器、ISA、RTL、驱动和测试向量都在同一个仓库中，没有隐藏的运行时。
+- **可复现**：公开脚本能够从 SpinalHDL 生成 Verilog，构建 Vivado/Vitis 工程，并通过 JTAG 读取结构化测试结果。
+- **真实闭环**：演示不是空壳寄存器测试。PS 将 KWS bundle 写入共享 BRAM，VenusCore 执行 44 条 uOP，再由 PS 校验 INT8 logits 和 top1。
+- **适合学习协同设计**：项目把量化布局、片上存储约束、DMA、寄存器控制和固件重定位放在同一个可运行案例里。
+- **边界明确**：公开版本只承诺原版 Digilent Zybo XC7Z010 上的 KWS testvector 路径，不隐藏未验证能力。
 
-- SpinalHDL source for the VenusCore NPU APB3 control plane and AHB-Lite DMA data plane.
-- ZYBO7010 glue RTL: AXI4-Lite-to-APB3, AHB-Lite-to-BRAM, and a wrapper.
-- A compact Python compiler subset for hand-written smoke tests and ONNX QDQ KWS bundle generation.
-- A testvector-only Vitis bare-metal app with `bundle.h` and `kws_testvector_fpga.h`.
-
-Not included:
-
-- Model authoring assets, large data files, generated RTL, simulation caches, board-specific experiments outside ZYBO7010, or physical-implementation backend materials.
-
-## Repository Layout
+## 已验证闭环
 
 ```text
-hw/spinal/                  SpinalHDL NPU source
-fpga/zybo7010/rtl/          Board glue RTL
-fpga/zybo7010/app/src/      Testvector-only PS application
-sw/compiler/                Python compiler subset
-scripts/gen_rtl.sh          SpinalHDL -> Verilog generation
-docs/architecture.md        Interface and dataflow notes
+预生成 bundle.h + KWS testvector
+              |
+              v
+Zynq PS -> 128 KiB shared BRAM -> VenusCore PL NPU
+              ^                       |
+              +------ output logits <-+
+                                      |
+                          top1 / tolerance check
+                                      |
+                           UART + JTAG result ABI
 ```
 
-## Quick Start
+在仓库提交 `c33553c` 的首次板级基线上，原版 Digilent Zybo 上得到：
 
-Generate RTL:
+| 项目 | 实测结果 |
+|---|---:|
+| FPGA / PL clock | XC7Z010 / 50 MHz |
+| KWS uOP 数 | 44 |
+| NPU 版本 | `0x00050000` |
+| top1 | 0，期望 0 |
+| 最大 INT8 绝对误差 | 5，容差 5 |
+| NPU 活跃周期 | 563,188 cycles |
+| 活跃周期等价值 | 11.26376 ms @ 50 MHz |
+| Post-route WNS | +3.025 ns |
+| LUT / FF | 7,328 / 6,738 |
+| BRAM tile / DSP | 42 / 7 |
+
+11.26376 ms 只由 NPU `DEBUG0` 活跃周期计数换算，不包含 PS 搬运、cache 操作、程序启动、UART 或 JTAG 开销，因此不能直接解释为端到端延迟或吞吐率。完整测量条件见 [验证与结果](docs/verification.md)。
+
+## 系统组成
+
+```mermaid
+flowchart LR
+    ONNX[ONNX QDQ model\nnot distributed] --> COMP[Python compiler]
+    COMP --> BUNDLE[uops + params + bundle.h]
+    BUNDLE --> PS[Zynq PS bare-metal app]
+    PS -->|AXI4-Lite| BRIDGE[AXI-Lite to APB3]
+    BRIDGE --> NPU[VenusCore NPU]
+    NPU -->|AHB-Lite DMA| MEM[128 KiB shared BRAM]
+    PS <-->|load and verify| MEM
+    NPU -->|IRQ| PS
+```
+
+默认硬件配置为 1 cluster、4 lanes、每 lane SIMD4、INT8 乘法和 INT32 累加。控制面使用 APB3，DMA 数据面使用 AHB-Lite。ZYBO7010 wrapper 将 Zynq PS 的 AXI4-Lite 控制访问转换为 APB3，并将 NPU DMA 接到双口共享 BRAM。
+
+## 仓库结构
+
+```text
+hw/spinal/                  VenusCore SpinalHDL source
+sw/compiler/                ONNX QDQ/compiler/runtime subset
+fpga/zybo7010/rtl/          AXI/APB and AHB/BRAM board glue
+fpga/zybo7010/app/src/      Testvector-only bare-metal firmware
+fpga/zybo7010/scripts/      Vivado, Vitis and XSDB batch flows
+docs/                       Architecture, ISA, compiler and verification docs
+scripts/                    Reproducible project entrypoints
+```
+
+生成的 Verilog、Vivado/Vitis 工程和发布二进制位于 `build/`，不会提交到 Git。
+
+## 快速开始
+
+### 开源工具检查
 
 ```bash
+git clone https://github.com/XuZhanhe-Chi/TinyML_NPU.git
 cd TinyML_NPU
-bash scripts/gen_rtl.sh --top VenusCoreTop
+make setup
+make check
 ```
 
-Run compiler smoke tests:
+`make setup` 在 `.venv/` 安装 Python 开发依赖；`make check` 本身不会安装或修改依赖。也可以先运行 `make env` 查看缺失工具。
+
+### 生成 RTL
+
+```bash
+make rtl
+```
+
+输出位于 `build/rtl/VenusCoreTop.v` 和 `build/rtl/VenusCoreTopBB.v`。
+
+### 构建并运行 ZYBO7010
+
+需要 Vivado/Vitis 2021.1、Digilent board files、原版 Digilent Zybo 和可用的 JTAG 连接：
+
+```bash
+make zybo-bitstream
+make zybo-app
+make zybo-run
+```
+
+脚本优先使用 `XILINX_VIVADO_SETTINGS` 和 `XILINX_VITIS_SETTINGS`，并兼容 `/home/tools/Xilinx/.../2021.1/settings64.sh`。首次构建会把固定版本的 Digilent board files 下载到 `build/deps/`。
+
+成功的结构化输出包含：
+
+```text
+TINYML_NPU_VERSION=0x00050000
+TINYML_NPU_RESULT code=0 ... top1=0 ... max_abs_error=5
+TINYML_NPU_BOARD_PASS
+```
+
+详细步骤和故障定位见 [入门指南](docs/getting-started.md) 与 [ZYBO7010 指南](fpga/zybo7010/README.md)。
+
+## 编译器入口
+
+无模型依赖的 smoke bundle：
 
 ```bash
 cd sw/compiler
-python -m pip install -e .[dev]
-pytest -q
-python -m examples.hand_written.conv3x3_single_tile --output-dir out/examples/conv3x3_single_tile
+../../.venv/bin/python -m examples.hand_written.conv3x3_single_tile \
+  --output-dir out/examples/conv3x3_single_tile
 ```
 
-Run the full local verification bundle:
+如果你有自己的量化 KWS ONNX QDQ 模型：
 
 ```bash
-cd TinyML_NPU
-bash scripts/check_local.sh
-```
-
-Probe the Xilinx JTAG connection:
-
-```bash
-bash scripts/probe_xilinx_hw.sh /home/tools/Xilinx/Vivado/2021.1/settings64.sh
-```
-
-Build the ZYBO7010 bitstream and XSA with Digilent board files:
-
-```bash
-DIGILENT_BOARD_REPO=/path/to/vivado-boards/new/board_files \
-  bash scripts/build_zybo7010.sh
-bash scripts/build_vitis_zybo7010.sh
-bash scripts/run_zybo7010.sh
-```
-
-Compile a KWS ONNX QDQ model if you have one locally:
-
-```bash
-python -m examples.onnx.compile_kws_qdq \
+../../.venv/bin/python -m examples.onnx.compile_kws_qdq \
   --model /path/to/kws_qdq_int8.onnx \
   --output-dir out/examples/onnx_kws_qdq \
   --address-mode offset \
@@ -83,24 +142,36 @@ python -m examples.onnx.compile_kws_qdq \
   --post-check-param-base 0x40000000
 ```
 
-## ZYBO7010 Demo
+仓库不分发训练代码、数据集或 ONNX 模型。板级演示使用已生成的 `bundle.h` 和可公开的固定测试向量。
 
-Address map:
+## 文档导航
 
-- NPU control AXI4-Lite window: `0x43C0_0000`
-- Shared BRAM window: `0x4000_0000..0x4001_FFFF`
-- Interrupt: `venus_irq` to `IRQ_F2P[0]`
+- [入门与工具链](docs/getting-started.md)
+- [架构与数据流](docs/architecture.md)
+- [硬件微架构与配置](docs/hardware.md)
+- [编译器、算子能力与内存布局](docs/compiler.md)
+- [uOP ISA、寄存器与 result ABI](docs/isa-and-runtime.md)
+- [验证结果与复现边界](docs/verification.md)
+- [已知限制](docs/limitations.md)
+- [贡献指南](CONTRIBUTING.md) 与 [路线图](ROADMAP.md)
 
-Vivado block design:
+## 范围与许可
 
-1. Add Zynq-7000 PS.
-2. Add `venuscore_zybo_wrapper.v`, `axi_lite_to_apb3.v`, `ahb_lite_to_bram_port.v`, and generated `build/rtl/VenusCoreTop.v`.
-3. Connect PS `M_AXI_GP0` to wrapper AXI4-Lite control and assign `0x43C0_0000`.
-4. Connect wrapper BRAM native port to a 128KB shared BRAM block at `0x4000_0000`.
-5. Connect `venus_irq` to `IRQ_F2P[0]`.
+v0.1.0 只包含完成 ZYBO7010 KWS testvector 闭环所需的源码。实时音频前端、训练资产、其他 FPGA 平台、芯片物理实现材料及大型生成工件不在本版本范围内。
 
-The Vitis app in `fpga/zybo7010/app/src` uses the prebuilt KWS bundle and testvector. Expected UART output includes NPU version, uOP count, top1, and `TEST PASSED`.
+项目源码采用 [Apache License 2.0](LICENSE)。Digilent board files 不复制到仓库；GitHub Release 中由 Xilinx 工具生成的 `.bit`、`.xsa` 和 `.elf` 另有来源与使用说明，见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
-## License
+---
 
-Apache-2.0. See [LICENSE](LICENSE).
+<a id="english"></a>
+## English
+
+TinyML_NPU is an inspectable INT8 neural-network accelerator reference design for research and education. It originated as a graduation project and publishes the complete boundary between an ONNX QDQ compiler, a 32-byte micro-operation ISA, the SpinalHDL VenusCore accelerator, Zynq bare-metal firmware, and a reproducible KWS testvector demo on the original Digilent Zybo XC7Z010.
+
+The project is useful when the goal is to understand hardware/software co-design rather than consume a black-box accelerator. A reader can trace tensor layout and quantized parameters into uOP fields, observe how the PS relocates a bundle into shared BRAM, and inspect the APB3 control and AHB-Lite DMA paths used by the PL core.
+
+The validated v0.1 path executes 44 KWS uOPs at a 50 MHz PL clock, produces the expected top1 result, and reports 563,188 active NPU cycles. This cycle-derived 11.26376 ms value excludes host setup and I/O overhead and is not an end-to-end latency claim.
+
+Start with `make setup && make check`. For the proprietary board flow, install Vivado/Vitis 2021.1 and run `make zybo-bitstream`, `make zybo-app`, and `make zybo-run`. Detailed documentation is primarily Chinese with an English summary in each topic.
+
+TinyML_NPU is a research prototype, not production-ready IP. Source code is licensed under Apache-2.0; generated vendor artifacts and external board definitions have separate notices.

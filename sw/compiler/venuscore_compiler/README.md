@@ -17,6 +17,6 @@
 - `backend/`：内存规划、Param Block 打包、uOP 生成与编码
 - `plan/`：Plan 数据结构与二进制格式（张量表/步骤表）
 - `runtime/`：导出器（`bundle.h`、测试平台导出）
-- `isa/`：uOP 编解码与字段定义（需与 `sw/compiler/doc/VenusCore_ISA.md` 对齐）
+- `isa/`：uOP 编解码与字段定义（需与仓库 `docs/isa-and-runtime.md` 对齐）
 - `config/`：默认配置与硬件约束参数
 - `common/`、`utils/`：通用工具

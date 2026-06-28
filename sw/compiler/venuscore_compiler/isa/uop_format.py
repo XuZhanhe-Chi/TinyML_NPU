@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Semantic VenusCore uOP representation aligned with sw/compiler/doc/VenusCore_ISA.md (32-byte uOP, H+Y version).
+Semantic VenusCore uOP representation aligned with docs/isa-and-runtime.md.
 
 Mapping to encoded words:
   W0: OPCODE, ACT_TYPE, FIRST_FLAG, LAST_FLAG, STRIDE, PAD_*, H_TILE, W_TILE, SYNC

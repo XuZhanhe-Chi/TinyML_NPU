@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Regression tests for DWCONV weight packing against sw/compiler/doc/VenusCore_MemortMap.md (4.4).
+Regression tests for DWCONV weight packing against the public parameter layout.
 """
 
 from __future__ import annotations

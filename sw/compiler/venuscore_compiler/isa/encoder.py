@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Encoder for VenusCore uOPs (semantic -> encoded 32-byte form, aligned with sw/compiler/doc/VenusCore_ISA.md).
+Encoder for VenusCore uOPs (semantic -> encoded 32-byte form).
 """
 
 from __future__ import annotations

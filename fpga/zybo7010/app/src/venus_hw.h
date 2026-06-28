@@ -41,13 +41,12 @@
 #define VENUS_REG_UOP_COUNT 0x010  // RW: uOP 数量
 #define VENUS_REG_INT_EN 0x020     // RW: 中断使能
 #define VENUS_REG_INT_STATUS 0x024 // RW1C: 中断状态 (写1清除)
-// 调试寄存器（若硬件实现了，详见 sw/compiler/doc/VenusCore_RegFile.md）
+// 调试寄存器（详见 docs/isa-and-runtime.md）
 #define VENUS_REG_DEBUG0 0x080 // RO: 调试计数器/状态
 #define VENUS_REG_DEBUG1 0x084 // RO: 调试状态快照（死锁定位）
 
 // ==========================================================
 // 3. 寄存器位域定义 (Bit Fields)
-//    注：与 VenusCore_RegFile.md 对齐。
 // ==========================================================
 
 // CTRL Register
@@ -135,7 +134,8 @@ typedef enum {
   OP_PWCONV = 0x2,
   OP_DWCONV = 0x3,
   OP_AVGPOOL = 0x4,
-  OP_MATMUL = 0x5
+  OP_MAXPOOL = 0x5,
+  OP_MATMUL_FC = 0x6
 } venus_opcode_t;
 
 // 激活函数 Act

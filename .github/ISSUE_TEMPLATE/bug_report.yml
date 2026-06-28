@@ -1,0 +1,54 @@
+name: Bug report
+description: Report a reproducible compiler, RTL, firmware, or board-flow problem.
+title: "[bug] "
+labels: [bug]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Compiler
+        - SpinalHDL / generated RTL
+        - ZYBO7010 glue RTL
+        - Firmware / runtime
+        - Vivado / Vitis flow
+        - Documentation
+    validations:
+      required: true
+  - type: input
+    id: revision
+    attributes:
+      label: Revision
+      description: Commit SHA or release tag.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Python, Java/sbt, simulator, and vendor-tool versions as applicable.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction
+      description: Minimal commands, inputs, and logs needed to reproduce the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I removed private models, data, credentials, and proprietary logs.
+          required: true
+        - label: I checked the documented v0.1.0 limitations.
+          required: true

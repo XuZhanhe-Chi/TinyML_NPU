@@ -176,7 +176,7 @@ class Uop:
     def decode_words(
         cls, w0: int, w1: int, w2: int, w3: int, w4: int, w5: int, w6: int, w7: int
     ) -> "Uop":
-        # Bitfields per sw/compiler/doc/VenusCore_ISA.md (32B uOP, H+Y version).
+        # Bitfields per docs/isa-and-runtime.md (32-byte uOP).
         opcode    = cls._get_bits(w0,  3,  0)
         act_type  = cls._get_bits(w0,  6,  4)
         first     = cls._get_bits(w0,  7,  7)

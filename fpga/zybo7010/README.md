@@ -1,74 +1,107 @@
-# ZYBO7010 Demo
+# ZYBO7010 KWS Testvector Demo
 
-This directory contains the files needed for the first public board demo.
+> **English summary:** This directory contains the original Digilent Zybo XC7Z010 integration, bare-metal testvector firmware, and non-interactive Vivado/Vitis/XSDB scripts. It does not target Zybo Z7.
 
-## RTL Files
+## 闭环
 
-- `rtl/axi_lite_to_apb3.v`: PS AXI4-Lite control to NPU APB3 registers.
-- `rtl/ahb_lite_to_bram_port.v`: NPU AHB-Lite DMA to shared BRAM native port.
-- `rtl/venuscore_zybo_wrapper.v`: wrapper around the bridges and generated `VenusCoreTop`.
-
-Generate the NPU RTL before creating the Vivado project:
-
-```bash
-bash scripts/gen_rtl.sh --top VenusCoreTop
+```text
+bundle.h + kws_testvector_fpga.h
+        -> PS copies and relocates data in shared BRAM
+        -> VenusCore executes 44 uOPs
+        -> PS checks logits/top1
+        -> UART TEST PASSED + JTAG result block
 ```
 
-Add these Verilog files plus `build/rtl/VenusCoreTop.v` to Vivado.
+演示没有麦克风、音频前端、文件系统或动态模型加载。固定 bundle 让 FPGA bring-up 不依赖训练环境。
 
-For the reproducible batch flow, provide the Digilent `board_files` directory:
+## 文件
 
-```bash
-DIGILENT_BOARD_REPO=/path/to/vivado-boards/new/board_files \
-  bash scripts/build_zybo7010.sh
-```
+- `rtl/axi_lite_to_apb3.v`：PS AXI4-Lite control 到 NPU APB3。
+- `rtl/ahb_lite_to_bram_port.v`：NPU AHB-Lite DMA 到 shared BRAM port B。
+- `rtl/venuscore_zybo_wrapper.v`：bridge 和生成的 `VenusCoreTop` wrapper。
+- `app/src/`：bare-metal driver、固定 bundle 和 KWS testvector。
+- `scripts/create_project.tcl`：完整 block design、implementation 和 XSA export。
+- `scripts/build_vitis.tcl`：standalone BSP 和 app linker template。
+- `scripts/run_board.tcl`：program、download 和 result ABI 读取。
 
-The script builds `build/vivado_zybo7010/tinyml_npu_zybo7010.xsa` and the matching bitstream.
-The PL clock is 50 MHz, and the build fails if post-route setup timing is not met.
+## 地址与时钟
 
-## Address Map
+| 接口 | 配置 |
+|---|---|
+| Device | `xc7z010clg400-1` |
+| Board part | `digilentinc.com:zybo:part0:2.0` |
+| PL clock | 50 MHz |
+| NPU control | `0x43C0_0000..0x43C0_0FFF` |
+| Shared BRAM | `0x4000_0000..0x4001_FFFF` |
+| Result block | `0x4001_FFC0..0x4001_FFFF` |
+| IRQ | `IRQ_F2P[0]` |
 
-- Wrapper AXI4-Lite control: `0x43C0_0000`
-- Shared BRAM: `0x4000_0000..0x4001_FFFF`
-- IRQ: connect `venus_irq` to PS `IRQ_F2P[0]`
+BRAM bridge 的 `bram_addr` 是 byte address，与 Vivado BRAM interface metadata 匹配。固件只在共享窗口内布置 uOP、参数、activation 和 result。
 
-The BRAM bridge uses byte addresses on `bram_addr`. If your BRAM IP expects word addresses, insert a small address-shift wrapper or adjust the port mapping in the block design.
+## 构建
 
-## Vitis App
-
-Use `app/src` as the bare-metal application source directory. The app is testvector-only:
-
-- No microphone input.
-- No audio frontend.
-- No runtime model loading.
-
-Build the standalone application with Vitis 2021.1:
-
-```bash
-bash scripts/build_vitis_zybo7010.sh
-```
-
-The resulting ELF is `build/vitis_zybo7010/kws_test.elf`. The script uses Vitis
-HSI to generate and compile the standalone BSP, then links the app with the
-Vitis ARM cross-compiler; it does not require the Eclipse UI.
-
-With the board connected over JTAG, program and run the demo with:
+从仓库根目录执行：
 
 ```bash
-bash scripts/run_zybo7010.sh
+make env BOARD=1
+make zybo-bitstream
+make zybo-app
 ```
 
-Besides the UART log, the firmware publishes its result at `0x4001_FFC0`, so
-the script can report PASS/failure and the NPU debug registers through XSDB.
-PASS requires the expected top1 and a maximum int8 logit error of at most 5;
-the exact byte mismatch count is still reported for visibility.
+输出：
 
-Expected UART output:
+```text
+build/vivado_zybo7010/tinyml_npu_zybo7010.bit
+build/vivado_zybo7010/tinyml_npu_zybo7010.xsa
+build/vitis_zybo7010/kws_test.elf
+```
+
+默认脚本会取得固定版本的 Digilent board files。离线构建可以设置：
+
+```bash
+export DIGILENT_BOARD_REPO=/path/to/vivado-boards/new/board_files
+export XILINX_VIVADO_SETTINGS=/path/to/Vivado/2021.1/settings64.sh
+export XILINX_VITIS_SETTINGS=/path/to/Vitis/2021.1/settings64.sh
+```
+
+Vivado flow 在 post-route WNS 为负、存在 unrouted net 或关键 timing endpoint 未约束时失败。
+
+## 连接与运行
+
+板卡上电并连接 JTAG 后：
+
+```bash
+make zybo-probe
+make zybo-run
+```
+
+`run_board.tcl` 依次执行 system reset、FPGA program、PS7 init、ELF download，并最多等待 60 秒 result magic。成功时至少包含：
+
+```text
+TINYML_NPU_VERSION=0x00050000
+TINYML_NPU_RESULT code=0 hw_status=0x00000020 top1=0 ... max_abs_error=5
+TINYML_NPU_DEBUG status=0x00000020 debug0=0x000897F4 debug1=0x00200000
+TINYML_NPU_BOARD_PASS
+```
+
+UART 同时打印：
 
 ```text
 TinyML_NPU ZYBO7010 KWS testvector demo
-NPU version: ...
+NPU version: 0x00050000
 uOP count  : 44
 top1=0 expected=0
 TEST PASSED
 ```
+
+板级 PASS 要求 top1 相同且 signed INT8 max absolute error 不超过 5。逐 byte mismatch 数仍会输出，但不是单独的失败条件。
+
+## 故障排查
+
+1. `make zybo-probe` 无设备：检查板卡电源、JTAG 模式、USB 权限和 `hw_server`。
+2. VERSION 不正确：确认下载的是本次 XSA 对应 bitstream，并检查 control address assignment。
+3. result timeout：停止 Cortex-A9 后读取 `0x4001_FFC0` 的 9 个 word；检查固件是否启动。
+4. runtime failure：查看 `hw_status`、`STATUS`、`DEBUG0/1` 和固件打印的首条 uOP W0-W7。
+5. output failure：先确认 bundle/testvector 没有混用，再比较 top1、max error 和 logits。
+
+result 字段与寄存器解释见 [ISA 与运行时文档](../../docs/isa-and-runtime.md)，测量口径见 [验证文档](../../docs/verification.md)。

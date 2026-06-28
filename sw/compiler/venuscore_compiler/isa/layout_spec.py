@@ -3,7 +3,7 @@
 Bitfield layout and enums for VenusCore 32-byte uOPs (H+Y version).
 
 This module is the single source of truth for:
-  - Opcode / Activation / QMode enums (aligned with sw/compiler/doc/VenusCore_ISA.md).
+  - Opcode / Activation / QMode enums (documented in docs/isa-and-runtime.md).
   - UOP_FIELDS: mapping from semantic field names to (word, lsb, width).
   - pack_fields / unpack_fields helpers to translate between semantic fields
     and the eight 32-bit words (W0–W7) that make up a uOP.
@@ -36,7 +36,7 @@ WORD7 = 7
 
 
 class Opcode(IntEnum):
-    """Opcode values defined by sw/compiler/doc/VenusCore_ISA.md."""
+    """Opcode values documented in docs/isa-and-runtime.md."""
 
     NOP = 0x0
     CONV2D = 0x1

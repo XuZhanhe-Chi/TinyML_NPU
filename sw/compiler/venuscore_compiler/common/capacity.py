@@ -57,7 +57,7 @@ def weight_bytes(op_type: str, cin: int, cout_tile: int, kh: int, kw: int, qmode
     if op_type == "depthwise_conv":
         # DWCONV is stored in a special packed format:
         #   per-channel, per-kw word: {top, mid, bot, 0} => 3 words / channel => 12B/channel
-        # This must match sw/compiler/doc/VenusCore_MemortMap.md (4.4) and backend layout.
+        # This must match docs/compiler.md and the backend parameter layout.
         return cout_tile * 3 * 4
     if op_type == "fully_connected":
         return packed_bytes(cout_tile * cin)

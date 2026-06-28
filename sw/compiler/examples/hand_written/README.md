@@ -18,7 +18,6 @@
 
 运行示例：
 
-```powershell
+```bash
 python -m examples.hand_written.multi_layer_chain
 ```
-

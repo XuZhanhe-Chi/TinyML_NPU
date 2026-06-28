@@ -1,0 +1,33 @@
+name: Feature request
+description: Propose a scoped, testable improvement.
+title: "[feature] "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What research, teaching, or reproducibility problem should this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: Describe interfaces, compatibility, and expected repository scope.
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation plan
+      description: State compiler, RTL, timing, and physical-board evidence that would be added.
+    validations:
+      required: true
+  - type: textarea
+    id: maintenance
+    attributes:
+      label: Assets and maintenance
+      description: Identify required boards/models and confirm redistribution rights.
+    validations:
+      required: true

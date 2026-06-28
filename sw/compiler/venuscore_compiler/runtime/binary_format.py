@@ -3,7 +3,7 @@
 Binary packaging for VenusCore compiled artifacts.
 
 Contains:
-  - uop_binary: contiguous 32-byte uOP stream (little-endian) per VenusCore_ISA.md.
+  - uop_binary: contiguous 32-byte little-endian uOP stream.
   - param_block: contiguous Param Block blob (Quant Coeff + aligned weight data) produced by layout_param_block.
   - metadata: auxiliary info (target, counts, sizes, etc.).
 """
