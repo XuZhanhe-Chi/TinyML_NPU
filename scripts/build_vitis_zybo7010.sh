@@ -2,13 +2,10 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-XILINX_SETTINGS="${XILINX_SETTINGS:-/home/tools/Xilinx/Vitis/2021.1/settings64.sh}"
+source "$REPO_ROOT/scripts/lib/xilinx.sh"
+XILINX_SETTINGS="$(find_xilinx_settings Vitis)"
 XSA="$REPO_ROOT/build/vivado_zybo7010/tinyml_npu_zybo7010.xsa"
 
-if [[ ! -f "$XILINX_SETTINGS" ]]; then
-  echo "Missing Vitis settings file: $XILINX_SETTINGS" >&2
-  exit 2
-fi
 if [[ ! -f "$XSA" ]]; then
   echo "Missing hardware platform: $XSA" >&2
   echo "Run scripts/build_zybo7010.sh first." >&2

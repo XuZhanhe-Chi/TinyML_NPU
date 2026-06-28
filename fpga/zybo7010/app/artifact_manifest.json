@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "description": "Pre-generated public KWS demo artifacts for the ZYBO7010 testvector flow.",
+  "model_distributed": false,
+  "training_data_distributed": false,
+  "redistribution": "Authorized for inclusion in TinyML_NPU under Apache-2.0.",
+  "artifacts": [
+    {
+      "path": "src/bundle.h",
+      "sha256": "e3bdf2d1b80255685676cc0fa216fbb29d24274bed56a73957242dbd0703248e",
+      "bytes": 209592
+    },
+    {
+      "path": "src/kws_testvector_fpga.h",
+      "sha256": "03cbd3e72341da910749dc29bae6befc307c1cf09c47e502b7af129a4292caa8",
+      "bytes": 28956
+    }
+  ]
+}

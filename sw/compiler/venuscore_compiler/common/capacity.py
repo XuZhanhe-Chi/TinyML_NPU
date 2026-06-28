@@ -18,11 +18,12 @@ __all__ = [
     "weight_bytes",
 ]
 
-# Placeholder capacities; adjust to hardware spec as documents are finalized.
-IBUF_LINE_BYTES = 1 << 16
-IBUF_TOTAL_BYTES = 1 << 20
-WBUF_LANE_BYTES = 1 << 16
-WBUF_LANES = 1
+# Public ZYBO7010 preset. The compiler intentionally leaves 256 bytes of
+# headroom below the RTL's physical 4096-byte IBUF line capacity.
+IBUF_LINE_BYTES = 3840
+IBUF_TOTAL_BYTES = 12 * 1024
+WBUF_LANE_BYTES = 2048
+WBUF_LANES = 4
 
 
 def weight_bytes(op_type: str, cin: int, cout_tile: int, kh: int, kw: int, qmode: str) -> int:

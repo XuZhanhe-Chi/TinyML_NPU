@@ -2,15 +2,14 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-XILINX_SETTINGS="${XILINX_SETTINGS:-/home/tools/Xilinx/Vivado/2021.1/settings64.sh}"
-BOARD_REPO="${DIGILENT_BOARD_REPO:-${1:-}}"
+source "$REPO_ROOT/scripts/lib/xilinx.sh"
+XILINX_SETTINGS="$(find_xilinx_settings Vivado)"
+BOARD_REPO="${1:-}"
 
-if [[ ! -f "$XILINX_SETTINGS" ]]; then
-  echo "Missing Vivado settings file: $XILINX_SETTINGS" >&2
-  exit 2
-fi
-if [[ -z "$BOARD_REPO" || ! -d "$BOARD_REPO" ]]; then
-  echo "Set DIGILENT_BOARD_REPO or pass the Digilent board_files directory." >&2
+if [[ -z "$BOARD_REPO" ]]; then
+  BOARD_REPO="$(bash "$REPO_ROOT/scripts/fetch_digilent_board_files.sh")"
+elif [[ ! -d "$BOARD_REPO" ]]; then
+  echo "Digilent board_files directory does not exist: $BOARD_REPO" >&2
   exit 2
 fi
 

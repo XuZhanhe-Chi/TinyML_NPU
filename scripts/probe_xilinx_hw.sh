@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SETTINGS="${1:-/home/tools/Xilinx/Vivado/2021.1/settings64.sh}"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$REPO_ROOT/scripts/lib/xilinx.sh"
+SETTINGS="${1:-$(find_xilinx_settings Vivado)}"
 
 if [[ ! -f "$SETTINGS" ]]; then
   echo "Missing Xilinx settings file: $SETTINGS" >&2

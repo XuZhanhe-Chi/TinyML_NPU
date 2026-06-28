@@ -11,6 +11,10 @@ foreach required [list $bit_file $elf_file $ps7_init_file] {
 
 set result_addr 0x4001FFC0
 set result_magic 0x544E5055
+set result_words 9
+set expected_version 0x00050000
+set expected_top1 0
+set max_allowed_error 5
 
 connect -url tcp:127.0.0.1:3121
 puts "TINYML_NPU_TARGETS:\n[targets]"
@@ -31,6 +35,11 @@ configparams force-mem-access 1
 
 set version [mrd -value 0x43C0000C]
 puts [format "TINYML_NPU_VERSION=0x%08X" $version]
+if {$version != $expected_version} {
+  disconnect
+  error [format "unexpected NPU version: got 0x%08X expected 0x%08X" \
+    $version $expected_version]
+}
 
 mwr $result_addr 0
 dow $elf_file
@@ -49,12 +58,12 @@ for {set attempt 0} {$attempt < 600} {incr attempt} {
 if {!$complete} {
   targets -set -nocase -filter {name =~ "*Cortex-A9*#0"} -timeout 10
   stop
-  set words [mrd -value $result_addr 9]
+  set words [mrd -value $result_addr $result_words]
   disconnect
   error "board result timeout: $words"
 }
 
-set words [mrd -value $result_addr 9]
+set words [mrd -value $result_addr $result_words]
 set code [lindex $words 1]
 set hw_status [lindex $words 2]
 set top1 [lindex $words 3]
@@ -72,6 +81,9 @@ puts [format "TINYML_NPU_DEBUG status=0x%08X debug0=0x%08X debug1=0x%08X" \
 disconnect
 if {$code != 0} {
   error "KWS board test failed with result code $code"
+}
+if {$top1 != $expected_top1 || $max_abs_error > $max_allowed_error} {
+  error "KWS board result violates the v0.1 acceptance contract"
 }
 
 puts "TINYML_NPU_BOARD_PASS"

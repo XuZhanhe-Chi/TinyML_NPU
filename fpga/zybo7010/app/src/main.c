@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "board_result.h"
 #include "bundle.h"
 #include "kws_testvector_fpga.h"
 #include "venus_driver.h"
@@ -17,12 +18,7 @@
 #define ACT_OFFSET ALIGN_UP_CONST(PARAMS_OFFSET + PARAMS_LEN_BYTES, SHARED_ALIGN_BYTES)
 #define SHARED_USED_BYTES ALIGN_UP_CONST(ACT_OFFSET + ACTIVATION_PEAK_BYTES, SHARED_ALIGN_BYTES)
 #define SHARED_TOTAL_BYTES (SHARED_MEM_HIGH - SHARED_MEM_BASE + 1u)
-#define RESULT_BYTES 64u
-#define RESULT_OFFSET (SHARED_TOTAL_BYTES - RESULT_BYTES)
-#define RESULT_MAGIC 0x544E5055u
-#define KWS_OUTPUT_MAX_ABS_ERROR 5u
-
-#if SHARED_USED_BYTES > RESULT_OFFSET
+#if SHARED_USED_BYTES > TINYML_NPU_RESULT_OFFSET
 #error "KWS demo bundle does not fit in the 128KB shared BRAM window"
 #endif
 
@@ -32,21 +28,8 @@ static uint8_t *const g_uops_buf = (uint8_t *)(uintptr_t)(SHARED_MEM_BASE + UOPS
 static uint8_t *const g_params_buf = (uint8_t *)(uintptr_t)(SHARED_MEM_BASE + PARAMS_OFFSET);
 static uint8_t *const g_act_buf = (uint8_t *)(uintptr_t)(SHARED_MEM_BASE + ACT_OFFSET);
 
-typedef struct {
-  uint32_t magic;
-  uint32_t code;
-  uint32_t hw_status;
-  uint32_t top1;
-  uint32_t mismatches;
-  uint32_t max_abs_error;
-  uint32_t status;
-  uint32_t debug0;
-  uint32_t debug1;
-  uint32_t reserved[7];
-} board_result_t;
-
-static volatile board_result_t *const g_result =
-    (volatile board_result_t *)(uintptr_t)(SHARED_MEM_BASE + RESULT_OFFSET);
+static volatile tinyml_npu_board_result_t *const g_result =
+    (volatile tinyml_npu_board_result_t *)(uintptr_t)TINYML_NPU_RESULT_ADDR;
 
 static inline uint32_t mmio_read32(uint32_t off) {
   return *((volatile uint32_t *)(uintptr_t)(VENUS_REG_BASE + off));
@@ -158,7 +141,7 @@ static void publish_board_result(uint32_t code, uint32_t hw_status, uint32_t top
   g_result->debug1 = dbg.debug1;
   venus_cache_flush((const void *)g_result, sizeof(*g_result));
 
-  g_result->magic = RESULT_MAGIC;
+  g_result->magic = TINYML_NPU_RESULT_MAGIC;
   venus_cache_flush((const void *)g_result, sizeof(g_result->magic));
 }
 
@@ -189,7 +172,8 @@ int main(void) {
   if (st != VENUS_OK) {
     printf("venus_run_bundle failed: %s (%d)\r\n", venus_strerror(st), (int)st);
     dump_failure_debug(hw_status);
-    publish_board_result(1u, hw_status, 0xFFFFFFFFu, 0xFFFFFFFFu, 0xFFFFFFFFu);
+    publish_board_result(TINYML_NPU_RESULT_RUNTIME_FAILURE, hw_status,
+                         0xFFFFFFFFu, 0xFFFFFFFFu, 0xFFFFFFFFu);
     printf("TEST FAILED\r\n");
     return 1;
   }
@@ -203,18 +187,20 @@ int main(void) {
   printf("top1=%d expected=%lu\r\n", top1, (unsigned long)VC_KWS_EXPECTED_TOP1_I8);
   printf("output mismatches=%lu max_abs_error=%lu tolerance=%lu\r\n",
          (unsigned long)mismatches, (unsigned long)max_abs_error,
-         (unsigned long)KWS_OUTPUT_MAX_ABS_ERROR);
+         (unsigned long)TINYML_NPU_MAX_ABS_ERROR);
 
   if ((uint32_t)top1 == VC_KWS_EXPECTED_TOP1_I8 &&
-      max_abs_error <= KWS_OUTPUT_MAX_ABS_ERROR) {
-    publish_board_result(0u, hw_status, (uint32_t)top1, mismatches, max_abs_error);
+      max_abs_error <= TINYML_NPU_MAX_ABS_ERROR) {
+    publish_board_result(TINYML_NPU_RESULT_PASS, hw_status, (uint32_t)top1,
+                         mismatches, max_abs_error);
     printf("TEST PASSED\r\n");
     return 0;
   }
 
   dump_output_mismatches(out);
   dump_failure_debug(hw_status);
-  publish_board_result(2u, hw_status, (uint32_t)top1, mismatches, max_abs_error);
+  publish_board_result(TINYML_NPU_RESULT_OUTPUT_FAILURE, hw_status,
+                       (uint32_t)top1, mismatches, max_abs_error);
   printf("TEST FAILED\r\n");
   return 1;
 }

@@ -17,6 +17,13 @@ if (( ${#large_files[@]} > 0 )); then
   exit 1
 fi
 
+echo "[CHECK] Generated or proprietary build artifacts"
+artifact_pattern='(^|/)(build|out|dist|target)/|\.(bit|xsa|elf|dcp|fsdb|vcd|wdb)$|^hw/spinal/rtl/'
+if git ls-files | grep -E "$artifact_pattern"; then
+  echo "[CHECK] Generated build artifacts are tracked" >&2
+  exit 1
+fi
+
 echo "[CHECK] Scope keywords"
 PATTERN="$(printf '%s|%s|%s|%s|%s|%s|%s|%s' "AS""IC" "40""nm" "PT""PX" "SP""EF" "FS""DB" "Go""win" "GW""5A" "Vex""Riscv")"
 if rg -n "$PATTERN" . \

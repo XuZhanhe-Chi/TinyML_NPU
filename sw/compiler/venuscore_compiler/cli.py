@@ -15,7 +15,6 @@ from typing import Sequence
 
 from venuscore_compiler import compile_program
 from venuscore_compiler import logging_utils
-from venuscore_compiler.config import CompileConfig
 from venuscore_compiler.ir.program import VcProgram
 
 
@@ -26,7 +25,13 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     """Parse CLI arguments."""
 
     parser = argparse.ArgumentParser(description="VenusCore NPU compiler")
-    parser.add_argument("--input", type=str, required=True, help="Input model path")
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument("--input", type=Path, help="Input ONNX model path")
+    source.add_argument(
+        "--manual-smoke",
+        action="store_true",
+        help="Compile the built-in single Conv3x3 smoke graph",
+    )
     parser.add_argument(
         "--output-dir",
         type=str,
@@ -52,16 +57,22 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def load_program(input_path: Path) -> VcProgram:
-    """Load an ONNX model or build the hand-written smoke graph."""
+def load_program(input_path: Path | None, *, manual_smoke: bool = False) -> VcProgram:
+    """Load an existing ONNX model or explicitly build the smoke graph."""
 
     from venuscore_compiler.frontend import manual_builder
     from venuscore_compiler.frontend.onnx_loader import load_onnx_to_ir
 
-    if input_path.suffix.lower() == ".onnx":
-        return load_onnx_to_ir(str(input_path))
+    if manual_smoke:
+        return manual_builder.build_single_conv3x3_program(name="manual_smoke")
+    if input_path is None:
+        raise ValueError("An ONNX input path or --manual-smoke is required.")
+    if input_path.suffix.lower() != ".onnx":
+        raise ValueError(f"Input must be an .onnx model, got: {input_path}")
+    if not input_path.is_file():
+        raise ValueError(f"Input model does not exist: {input_path}")
 
-    return manual_builder.build_single_conv3x3_program(name=input_path.stem or "manual")
+    return load_onnx_to_ir(str(input_path))
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -69,23 +80,22 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     args = parse_args(argv)
     logger = logging_utils.setup_logging()
-    cfg = CompileConfig(
-        input_path=Path(args.input),
-        output_dir=Path(args.output_dir),
+    input_path = args.input
+    logger.info("Loading %s", input_path if input_path is not None else "manual smoke graph")
+    try:
+        program = load_program(input_path, manual_smoke=args.manual_smoke)
+    except ValueError as exc:
+        logger.error("%s", exc)
+        return 2
+
+    output_dir = Path(args.output_dir)
+    logger.info("Compiling for target %s", args.target)
+    compile_program(
+        program,
+        output_dir=output_dir,
         target=args.target,
         dump_ir=args.dump_ir,
         dump_uop=args.dump_uop,
-    )
-
-    logger.info("Loading model from %s", cfg.input_path)
-    program = load_program(cfg.input_path)
-    logger.info("Compiling for target %s", cfg.target)
-    compile_program(
-        program,
-        output_dir=cfg.output_dir,
-        target=cfg.target,
-        dump_ir=cfg.dump_ir,
-        dump_uop=cfg.dump_uop,
     )
     logger.info("Compilation completed")
     return 0
