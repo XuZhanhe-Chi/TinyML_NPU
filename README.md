@@ -12,7 +12,7 @@ TinyML_NPU 是一个面向研究和教学的 INT8 神经网络加速器参考实
 
 - **可检查**：编译器、ISA、RTL、驱动和测试向量都在同一个仓库中，没有隐藏的运行时。
 - **可复现**：公开脚本能够从 SpinalHDL 生成 Verilog，构建 Vivado/Vitis 工程，并通过 JTAG 读取结构化测试结果。
-- **真实闭环**：演示不是空壳寄存器测试。PS 将 KWS bundle 写入共享 BRAM，VenusCore 执行 44 条 uOP，再由 PS 校验 INT8 logits 和 top1。
+- **真实闭环**：演示不是空壳寄存器测试。PS 将 KWS bundle 写入共享 BRAM，VenusCore 对 120 个 KWS 样本逐个执行 44 条 uOP，再由 PS 统计 INT8 logits、top1 和分类准确度。
 - **适合学习协同设计**：项目把量化布局、片上存储约束、DMA、寄存器控制和固件重定位放在同一个可运行案例里。
 - **边界明确**：公开版本只承诺原版 Digilent Zybo XC7Z010 上的 KWS testvector 路径，不隐藏未验证能力。
 
@@ -26,7 +26,7 @@ Zynq PS -> 128 KiB shared BRAM -> VenusCore PL NPU
               ^                       |
               +------ output logits <-+
                                       |
-                          top1 / tolerance check
+                          reference top1 / accuracy / tolerance check
                                       |
                            UART + JTAG result ABI
 ```
@@ -37,16 +37,19 @@ Zynq PS -> 128 KiB shared BRAM -> VenusCore PL NPU
 |---|---:|
 | FPGA / PL clock | XC7Z010 / 50 MHz |
 | KWS uOP 数 | 44 |
+| KWS 测试样本 | 120，12 类各 10 个 |
 | NPU 版本 | `0x00050000` |
-| top1 | 0，期望 0 |
-| 最大 INT8 绝对误差 | 5，容差 5 |
-| NPU 活跃周期 | 563,188 cycles |
-| 活跃周期等价值 | 11.26376 ms @ 50 MHz |
+| label accuracy | 117 / 120 = 97.50% |
+| reference top1 match | 120 / 120 = 100.00% |
+| 最大 INT8 绝对误差 | 0，容差 5 |
+| NPU 活跃周期合计 | 67,582,560 cycles |
+| 单样本 NPU 活跃周期 | 563,188 cycles |
+| 120 样本活跃周期等价值 | 1351.6512 ms @ 50 MHz |
 | Post-route WNS | +3.025 ns |
 | LUT / FF | 7,328 / 6,738 |
 | BRAM tile / DSP | 42 / 7 |
 
-11.26376 ms 只由 NPU `DEBUG0` 活跃周期计数换算，不包含 PS 搬运、cache 操作、程序启动、UART 或 JTAG 开销，因此不能直接解释为端到端延迟或吞吐率。完整测量条件见 [验证与结果](docs/verification.md) 和 [v0.1.0 发布记录](docs/releases/v0.1.0.md)。
+1351.6512 ms 是 120 次 NPU `DEBUG0` 活跃周期计数求和后换算；单样本等价值仍为 11.26376 ms。它不包含 PS 搬运、cache 操作、程序启动、UART 或 JTAG 开销，因此不能直接解释为端到端延迟或吞吐率。完整测量条件见 [验证与结果](docs/verification.md) 和 [v0.1.0 发布记录](docs/releases/v0.1.0.md)。
 
 ## 系统组成
 
@@ -115,7 +118,7 @@ make zybo-run
 
 ```text
 TINYML_NPU_VERSION=0x00050000
-TINYML_NPU_RESULT code=0 ... top1=0 ... max_abs_error=5
+TINYML_NPU_RESULT code=0 ... samples=120 label_correct=117 ref_top1_match=120 max_abs_error=0
 TINYML_NPU_BOARD_PASS
 ```
 
@@ -170,7 +173,7 @@ TinyML_NPU is an inspectable INT8 neural-network accelerator reference design fo
 
 The project is useful when the goal is to understand hardware/software co-design rather than consume a black-box accelerator. A reader can trace tensor layout and quantized parameters into uOP fields, observe how the PS relocates a bundle into shared BRAM, and inspect the APB3 control and AHB-Lite DMA paths used by the PL core.
 
-The validated v0.1 path executes 44 KWS uOPs at a 50 MHz PL clock, produces the expected top1 result, and reports 563,188 active NPU cycles. This cycle-derived 11.26376 ms value excludes host setup and I/O overhead and is not an end-to-end latency claim.
+The validated v0.1 path executes 120 balanced KWS samples at a 50 MHz PL clock. Hardware top1 matches the VenusCore reference for all 120 samples, label accuracy is 117/120, and total active NPU cycles are 67,582,560. The per-sample active-cycle value is 563,188 cycles, or 11.26376 ms at 50 MHz. These cycle-derived values exclude host setup and I/O overhead and are not end-to-end latency claims.
 
 Start with `make setup && make check`. For the proprietary board flow, install Vivado/Vitis 2021.1 and run `make zybo-bitstream`, `make zybo-app`, and `make zybo-run`. Detailed documentation is primarily Chinese with an English summary in each topic.
 

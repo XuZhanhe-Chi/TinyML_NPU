@@ -19,7 +19,7 @@ No unreleased user-facing changes.
 
 ### Verified
 
-- 44-uOP KWS bundle passes on physical hardware with expected top1 and maximum INT8 error 5.
+- 44-uOP KWS bundle passes 120 balanced KWS samples on physical hardware with 120/120 reference top1 matches, 117/120 label accuracy, and maximum INT8 error 0 under tolerance 5.
 - Post-route timing meets 50 MHz with +3.025 ns WNS on the reference build.
 
 [Unreleased]: https://github.com/XuZhanhe-Chi/TinyML_NPU/compare/v0.1.0...HEAD

@@ -12,8 +12,8 @@
     },
     {
       "path": "src/kws_testvector_fpga.h",
-      "sha256": "03cbd3e72341da910749dc29bae6befc307c1cf09c47e502b7af129a4292caa8",
-      "bytes": 28956
+      "sha256": "88883e3e726c62413ebd0326bfee32013737dc799d06915817b535d3de6df48d",
+      "bytes": 1762362
     }
   ]
 }

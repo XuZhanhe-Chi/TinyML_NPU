@@ -11,9 +11,11 @@ foreach required [list $bit_file $elf_file $ps7_init_file] {
 
 set result_addr 0x4001FFC0
 set result_magic 0x544E5055
-set result_words 9
+set result_words 16
 set expected_version 0x00050000
-set expected_top1 0
+set expected_sample_count 120
+set expected_ref_top1_match 120
+set min_label_correct 117
 set max_allowed_error 5
 
 connect -url tcp:127.0.0.1:3121
@@ -66,15 +68,24 @@ if {!$complete} {
 set words [mrd -value $result_addr $result_words]
 set code [lindex $words 1]
 set hw_status [lindex $words 2]
-set top1 [lindex $words 3]
-set mismatches [lindex $words 4]
-set max_abs_error [lindex $words 5]
-set status [lindex $words 6]
-set debug0 [lindex $words 7]
-set debug1 [lindex $words 8]
+set sample_count [lindex $words 3]
+set label_correct [lindex $words 4]
+set ref_top1_match [lindex $words 5]
+set max_abs_error [lindex $words 6]
+set total_mismatches [lindex $words 7]
+set first_failure_sample [lindex $words 8]
+set first_failure_top1 [lindex $words 9]
+set first_failure_expected_top1 [lindex $words 10]
+set first_failure_label [lindex $words 11]
+set status [lindex $words 12]
+set debug0 [lindex $words 13]
+set debug1 [lindex $words 14]
+set total_cycles [lindex $words 15]
 
-puts [format "TINYML_NPU_RESULT code=%u hw_status=0x%08X top1=%u mismatches=%u max_abs_error=%u" \
-  $code $hw_status $top1 $mismatches $max_abs_error]
+puts [format "TINYML_NPU_RESULT code=%u hw_status=0x%08X samples=%u label_correct=%u ref_top1_match=%u max_abs_error=%u total_mismatches=%u total_cycles=%u" \
+  $code $hw_status $sample_count $label_correct $ref_top1_match $max_abs_error $total_mismatches $total_cycles]
+puts [format "TINYML_NPU_FIRST_FAILURE sample=%u top1=%u expected_top1=%u label=%u" \
+  $first_failure_sample $first_failure_top1 $first_failure_expected_top1 $first_failure_label]
 puts [format "TINYML_NPU_DEBUG status=0x%08X debug0=0x%08X debug1=0x%08X" \
   $status $debug0 $debug1]
 
@@ -82,8 +93,17 @@ disconnect
 if {$code != 0} {
   error "KWS board test failed with result code $code"
 }
-if {$top1 != $expected_top1 || $max_abs_error > $max_allowed_error} {
-  error "KWS board result violates the v0.1 acceptance contract"
+if {$sample_count != $expected_sample_count} {
+  error "KWS board sample count mismatch"
+}
+if {$ref_top1_match != $expected_ref_top1_match} {
+  error "KWS board top1/reference match violates the acceptance contract"
+}
+if {$label_correct < $min_label_correct} {
+  error "KWS board label accuracy violates the acceptance contract"
+}
+if {$max_abs_error > $max_allowed_error} {
+  error "KWS board output error violates the acceptance contract"
 }
 
 puts "TINYML_NPU_BOARD_PASS"

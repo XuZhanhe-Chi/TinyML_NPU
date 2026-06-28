@@ -7,12 +7,12 @@
 ```text
 bundle.h + kws_testvector_fpga.h
         -> PS copies and relocates data in shared BRAM
-        -> VenusCore executes 44 uOPs
-        -> PS checks logits/top1
+        -> VenusCore executes 44 uOPs for each KWS sample
+        -> PS checks logits/top1 and label accuracy
         -> UART TEST PASSED + JTAG result block
 ```
 
-演示没有麦克风、音频前端、文件系统或动态模型加载。固定 bundle 让 FPGA bring-up 不依赖训练环境。
+演示没有麦克风、音频前端、文件系统或动态模型加载。固定 bundle 和 120 个平衡 KWS testvector 让 FPGA bring-up 不依赖训练环境。
 
 ## 文件
 
@@ -79,7 +79,8 @@ make zybo-run
 
 ```text
 TINYML_NPU_VERSION=0x00050000
-TINYML_NPU_RESULT code=0 hw_status=0x00000020 top1=0 ... max_abs_error=5
+TINYML_NPU_RESULT code=0 hw_status=0x00000020 samples=120 label_correct=117 ref_top1_match=120 max_abs_error=0 total_mismatches=0 total_cycles=67582560
+TINYML_NPU_FIRST_FAILURE sample=4294967295 top1=4294967295 expected_top1=4294967295 label=4294967295
 TINYML_NPU_DEBUG status=0x00000020 debug0=0x000897F4 debug1=0x00200000
 TINYML_NPU_BOARD_PASS
 ```
@@ -87,21 +88,23 @@ TINYML_NPU_BOARD_PASS
 UART 同时打印：
 
 ```text
-TinyML_NPU ZYBO7010 KWS testvector demo
+TinyML_NPU ZYBO7010 KWS multivector demo
 NPU version: 0x00050000
 uOP count  : 44
-top1=0 expected=0
+label_accuracy=117/120 (97.50%)
+ref_top1_match=120/120 (100.00%)
+output max_abs_error=0 tolerance=5 total_mismatches=0
 TEST PASSED
 ```
 
-板级 PASS 要求 top1 相同且 signed INT8 max absolute error 不超过 5。逐 byte mismatch 数仍会输出，但不是单独的失败条件。
+板级 PASS 要求样本数为 120、参考 top1 全部一致、label accuracy 不低于 117/120，且 signed INT8 max absolute error 不超过 5。逐 byte mismatch 数仍会输出，但不是单独的失败条件。
 
 ## 故障排查
 
 1. `make zybo-probe` 无设备：检查板卡电源、JTAG 模式、USB 权限和 `hw_server`。
 2. VERSION 不正确：确认下载的是本次 XSA 对应 bitstream，并检查 control address assignment。
-3. result timeout：停止 Cortex-A9 后读取 `0x4001_FFC0` 的 9 个 word；检查固件是否启动。
+3. result timeout：停止 Cortex-A9 后读取 `0x4001_FFC0` 的 16 个 word；检查固件是否启动。
 4. runtime failure：查看 `hw_status`、`STATUS`、`DEBUG0/1` 和固件打印的首条 uOP W0-W7。
-5. output failure：先确认 bundle/testvector 没有混用，再比较 top1、max error 和 logits。
+5. output failure：先确认 bundle/testvector 没有混用，再比较 `ref_top1_match`、`label_correct`、max error 和 logits。
 
 result 字段与寄存器解释见 [ISA 与运行时文档](../../docs/isa-and-runtime.md)，测量口径见 [验证文档](../../docs/verification.md)。

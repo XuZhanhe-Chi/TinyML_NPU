@@ -30,7 +30,7 @@ sequenceDiagram
     NPU->>BRAM: DMA store OFM
     NPU-->>FW: DONE/ERROR IRQ and status
     FW->>BRAM: Invalidate cache and read logits
-    FW->>FW: Compare top1 and tolerance
+    FW->>FW: Compare reference top1, label accuracy, and tolerance
 ```
 
 ## 公共 RTL 接口

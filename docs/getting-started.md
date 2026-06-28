@@ -107,7 +107,7 @@ make zybo-probe
 | 找不到 board part | 检查固定 board-files 是否完整，路径应指向 `new/board_files` |
 | 找不到 `vivado`/`xsct` | 先运行 `make env BOARD=1`，确认 settings 文件 |
 | 没有 JTAG target | 检查 USB 权限、线缆、电源和 `hw_server` |
-| result timeout | 查看 XSDB 输出的 9 个 result words，并读取 `STATUS/DEBUG0/DEBUG1` |
-| top1 正确但字节不同 | 以 max absolute INT8 error 是否超过 5 判定，mismatch 数只用于诊断 |
+| result timeout | 查看 XSDB 输出的 16 个 result words，并读取 `STATUS/DEBUG0/DEBUG1` |
+| reference top1 正确但字节不同 | 以 max absolute INT8 error 是否超过 5 判定，mismatch 数只用于诊断 |
 
 更具体的 Vivado block design 和固件说明见 [ZYBO7010 README](../fpga/zybo7010/README.md)。

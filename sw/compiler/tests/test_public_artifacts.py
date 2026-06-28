@@ -81,9 +81,12 @@ def test_board_result_abi_matches_xsdb_and_docs() -> None:
     assert _macro(header, "TINYML_NPU_RESULT_ADDR") == _tcl_value(tcl, "result_addr")
     assert _macro(header, "TINYML_NPU_RESULT_MAGIC") == _tcl_value(tcl, "result_magic")
     assert _macro(header, "TINYML_NPU_EXPECTED_VERSION") == _tcl_value(tcl, "expected_version")
-    assert _macro(header, "TINYML_NPU_EXPECTED_TOP1") == _tcl_value(tcl, "expected_top1")
+    assert _macro(header, "TINYML_NPU_EXPECTED_SAMPLE_COUNT") == _tcl_value(tcl, "expected_sample_count")
+    assert _macro(header, "TINYML_NPU_EXPECTED_REF_TOP1_MATCH") == _tcl_value(tcl, "expected_ref_top1_match")
+    assert _macro(header, "TINYML_NPU_MIN_LABEL_CORRECT") == _tcl_value(tcl, "min_label_correct")
     assert _macro(header, "TINYML_NPU_MAX_ABS_ERROR") == _tcl_value(tcl, "max_allowed_error")
     assert _macro(header, "TINYML_NPU_RESULT_BYTES") == 64
+    assert _macro(header, "TINYML_NPU_RESULT_ABI_VERSION") == 2
 
     fields = re.search(
         r"typedef struct \{(?P<body>.*?)\} tinyml_npu_board_result_t;",
@@ -93,8 +96,42 @@ def test_board_result_abi_matches_xsdb_and_docs() -> None:
     assert fields
     names = re.findall(r"uint32_t\s+(\w+)(?:\[\d+\])?;", fields.group("body"))
     assert names == [
-        "magic", "code", "hw_status", "top1", "mismatches",
-        "max_abs_error", "status", "debug0", "debug1", "reserved",
+        "magic", "code", "hw_status", "sample_count", "label_correct",
+        "ref_top1_match", "max_abs_error", "total_mismatches",
+        "first_failure_sample", "first_failure_top1",
+        "first_failure_expected_top1", "first_failure_label",
+        "status", "debug0", "debug1", "total_cycles",
     ]
-    for name in names[:-1]:
+    for name in names:
         assert f"| {name} |" in docs
+
+
+def _u8_array_values(text: str, name: str) -> list[int]:
+    match = re.search(
+        rf"static\s+const\s+uint8_t\s+{name}\[[^\]]+\]\s*=\s*\{{(?P<body>.*?)\}};",
+        text,
+        re.DOTALL,
+    )
+    assert match, f"array not found: {name}"
+    return [int(x, 16) for x in re.findall(r"0x([0-9A-Fa-f]{2})u", match.group("body"))]
+
+
+def test_kws_multivector_header_is_balanced_and_large_enough() -> None:
+    header = (APP_DIR / "src" / "kws_testvector_fpga.h").read_text()
+
+    assert _macro(header, "VC_KWS_SAMPLE_COUNT") == 120
+    assert _macro(header, "VC_KWS_MIN_SAMPLE_COUNT") == 100
+    assert _macro(header, "VC_KWS_CLASS_COUNT") == 12
+    assert _macro(header, "VC_KWS_EXPECTED_LABEL_CORRECT") == 117
+    assert _macro(header, "VC_KWS_EXPECTED_REF_TOP1_MATCH") == 120
+
+    labels = _u8_array_values(header, "VC_KWS_LABELS")
+    expected_top1 = _u8_array_values(header, "VC_KWS_EXPECTED_TOP1")
+    assert len(labels) == 120
+    assert len(expected_top1) == 120
+    assert sorted(set(labels)) == list(range(12))
+    assert {label: labels.count(label) for label in range(12)} == {label: 10 for label in range(12)}
+    assert sum(int(a == b) for a, b in zip(labels, expected_top1)) == 117
+
+    input_samples = len(re.findall(r"/\* sample \d{3} \*/", header))
+    assert input_samples == 240  # input samples + expected-output samples

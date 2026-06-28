@@ -10,7 +10,7 @@
 - 仓库不提供 KWS ONNX 模型、训练代码或数据集，因而不能从零重训并重生成同一个 demo bundle。
 - 编译器只支持受约束的 ONNX QDQ 子集，不是通用 ONNX Runtime。
 - 当前量化执行只承诺 signed INT8；INT4/INT2 编码是保留值。
-- 板级 PASS 使用 top1 和最大 INT8 误差容差，不要求 logits 逐 byte 相同。
+- 板级 PASS 要求 120 个样本全部完成、reference top1 全部一致、label accuracy 不低于 117/120，并使用最大 INT8 误差容差；逐 byte mismatch 只作为诊断信息。
 - 共享 BRAM 只有 128 KiB，模型必须同时容纳 uOP、参数、activation arena 和 result block。
 - PS 驱动采用 polling 完成路径；IRQ 已连接，但 demo 不实现完整中断服务程序。
 - AXI-Lite/APB bridge 只支持 32-bit full-word register write 契约。
